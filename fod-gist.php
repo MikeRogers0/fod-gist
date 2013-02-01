@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name:    Gist Shortcode
-Plugin URI:     http://www.fullondesign.co.uk/
+Plugin URI:     https://github.com/MikeRogers0/fod-gist
 Description:    Provides Gist embed shortcodes. Usage: <code>[gist id="1751763"]</code>
 Version:        1.2.0
 Author:         Mike Rogers
