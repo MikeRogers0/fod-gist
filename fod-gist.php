@@ -3,7 +3,7 @@
 Plugin Name:    Gist Shortcode
 Plugin URI:     http://www.fullondesign.co.uk/
 Description:    Provides Gist embed shortcodes. Usage: <code>[gist id="1751763"]</code>
-Version:        1.1.0
+Version:        1.2.0
 Author:         Mike Rogers
 Author URI:    	http://www.fullondesign.co.uk/
 Text Domain:    fod_gist
@@ -24,21 +24,31 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-// Prevents loading file directly
+/**
+ * Prevent the plugin from being loaded directly.
+ */
 if (!class_exists('WP')) {
     header('Status: 403 Forbidden');
     header('HTTP/1.1 403 Forbidden');
     die();
 }
 
-// Set up localisation
+/**
+ *  Set up localisation
+ */
 $locale = get_locale();
 if (empty($locale)) $locale = 'en_US';
 load_theme_textdomain('fod_gist', dirname (__FILE__).'/locale/'.$locale.'.mo');
 
-// Plugin version
-define('FOD_GIST_VERSION', '1.1.0');
 
+
+/**
+ * Creates the noscript version of the gist for your page.
+ * 
+ * @access public
+ * @param object $file
+ * @return string
+ */
 function fod_gist_embed($file){
 	$return = '<noscript><pre>';
 	$return .= htmlentities($file->content);
@@ -49,11 +59,29 @@ function fod_gist_embed($file){
 	return $return;
 }
 
-function fod_gist_func($atts){
-	// Get the variables passed.
-	extract(shortcode_atts(array('id' => '1751763', 'file' => null), $atts ));
+
+/**
+ * The handler for when [gist] is used.
+ * 
+ * @access public
+ * @param array $atts
+ * @param string $content (default: "")
+ * @return void
+ */
+function fod_gist_func($atts, $content=""){
+	$post = get_post();
 	
-	$return = get_transient('gist-'.$id.'-'.$file);
+	// Get the variables passed.
+	extract(shortcode_atts(array('id' => '1751763', 'file' => false, 'nocache'=>false), $atts ));
+	
+	$transientName = 'gist-'.$id.'-'.$file;
+	$transientTimeout = 25200;
+	
+	if($nocache != false || in_array($post->post_status, array('draft', 'pending'))){
+		delete_transient($transientName);
+	}
+	
+	$return = get_transient($transientName);
 	if($return){
 		return $return;
 	}
@@ -61,9 +89,9 @@ function fod_gist_func($atts){
 	$gistResponse = wp_remote_get( 'https://api.github.com/gists/'.$id);
 	$gistResponse = json_decode($gistResponse['body']);
 	
-	if($file != null){
+	if($file != false){
 		$return = fod_gist_embed($gistResponse->files->$file).'<script src="https://gist.github.com/'.$id.'.js?file='.$file.'"> </script>';
-		set_transient( 'gist-'.$id.'-'.$file, $return, 25200 );
+		set_transient($transientName, $return, $transientTimeout);
 		return $return;
 	}
 	
@@ -74,8 +102,11 @@ function fod_gist_func($atts){
 	
 	$return = $content.'<script src="https://gist.github.com/'.$id.'.js"> </script>';
 	
-	set_transient( 'gist-'.$id.'-'.$file, $return, 25200 );
+	set_transient($transientName, $return, $transientTimeout );
 	return $return;
 }
+
+/**
+ * Add in the shortcode listner.
+ */
 add_shortcode('gist', 'fod_gist_func');
-?>
